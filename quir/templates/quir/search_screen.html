@@ -1,0 +1,184 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Search</title>
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+  <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+  <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+  <script src="http://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+  <script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.0/js/bootstrap.min.js"></script>
+
+<style type="text/css">
+    body{
+    margin-top:20px;
+    margin-left: 20px;
+}
+.ui-autocomplete-category {
+    font-weight: bold;
+    padding: .2em .4em;
+    margin: .8em 0 .2em;
+    line-height: 1.5;
+    max-height: 100px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  </style>
+
+<script>
+
+function getCookie(name) {
+var cookieValue = null;
+if (document.cookie && document.cookie != '') {
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+        var cookie = jQuery.trim(cookies[i]);
+        // Does this cookie string begin with the name we want?
+        if (cookie.substring(0, name.length + 1) == (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+        }
+    }
+}
+    return cookieValue;
+}
+var csrftoken = getCookie('csrftoken');
+console.log(csrftoken);
+
+//Ajax call
+function csrfSafeMethod(method) {
+// these HTTP methods do not require CSRF protection
+return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+}
+$.ajaxSetup({
+    crossDomain: false, // obviates need for sameOrigin test
+    beforeSend: function(xhr, settings) {
+        if (!csrfSafeMethod(settings.type)) {
+            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+        }
+    }
+});
+
+  $.widget( "custom.catcomplete", $.ui.autocomplete, {
+    _create: function() {
+      this._super();
+      this.widget().menu( "option", "items", "> :not(.ui-autocomplete-category)" );
+    },
+    _renderMenu: function( ul, items ) {
+      var that = this,
+        currentCategory = "";
+      $.each( items, function( index, item ) {
+        var li;
+        if ( item.category != currentCategory ) {
+          ul.append( "<li class='ui-autocomplete-category'>" + item.category + "</li>" );
+          currentCategory = item.category;
+        }
+        li = that._renderItemData( ul, item );
+        if ( item.category ) {
+          li.attr( "aria-label", item.category + " : " + item.label );
+        }
+      });
+    }
+  });
+
+  var link = "{% url 'create_network' %}";
+  var l = [];
+  $(function() {
+    var foo;
+    $( "#sbox" ).catcomplete({ 
+      source: "/load_data/",
+      minlength: 4,
+      response: function (event, ui) {
+        foo = ui.content;
+        console.log(foo.length)
+        $('#count').html('Found ' + foo.length + ' results');
+    },
+           open: function( event, ui ) {
+        $(".ui-autocomplete").hide();
+    }
+    });
+    $("#sbox").keypress(function (e) {
+    if (!e) e = window.event;
+    if (e.keyCode == '13') {
+        $('#sbox').catcomplete('close');
+        if (foo.length) {
+            $(".test").empty();
+            console.log(foo);
+            for (var i = 0; i < foo.length; i++) {
+                $(".test").append(foo[i].value+'}');
+            }
+        }
+        $("#send_but").click();
+        return false;
+
+    }
+});
+  });
+
+    $(document).ready(function(e){
+    $('.search-panel .dropdown-menu').find('a').click(function(e) {
+    e.preventDefault();
+    var param = $(this).attr("href").replace("#","");
+    var concept = $(this).text();
+    $('.search-panel span#search_concept').text(concept);
+    $('.input-group #search_param').val(param);
+  });
+});
+
+
+  $(document).ready(function(e){
+    $('#send_but').click(function(e){
+          e.preventDefault();
+      var query = document.getElementById("sbox").value;
+      var resps = document.getElementById("output").innerHTML;
+      var objs = resps.split('}');
+      var l=[];
+      for(var i=0; i<objs.length; i++){
+        var a = {}
+        a['label'] = objs[i];
+        l.push(a)
+      }
+      d={};
+      d["query"] = query;
+      d["resp"] = JSON.stringify(l)
+
+      $.ajax( link, {
+        type: "POST",
+        data: d,
+        datatype: 'json',
+        success: function(data) {
+          //alert('call back');
+          window.location = "create_network";
+        },
+        error:   function(jqXHR, textStatus, errorThrown) {
+          alert("Error, status = " + textStatus + ", " +
+              "error thrown: " + errorThrown
+        );
+        }
+      });
+    });
+  });
+
+  </script>
+  <nav class="navbar navbar-default navbar-static-top">
+    <p class="navbar-text navbar-left">Hello</p>
+    <p class="navbar-text navbar-left"><a href="{% url 'django.contrib.auth.views.logout' %}" class="navbar-link">Logout</a></p>
+</nav>
+
+
+</head>
+
+<body>
+<div class="search_box">
+<form id="target" action="." method="post">{% csrf_token %}
+  <span><input type="text" id = "sbox" style="width: 800px;" placeholder="Search..."></span>
+  <span class="btn btn-default" type="button" id="send_but" style="display: none"><span class="glyphicon glyphicon-search"></span></span>
+</form>
+</div>
+<div id = "output" class="test" style="display: none">Output goes here:<br/><ul></ul></div>
+<div id="count"></div>
+
+</body>
+</html>

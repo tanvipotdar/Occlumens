@@ -1,0 +1,683 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta content="utf-8" http-equiv="encoding">
+  <title>Traversal</title>
+
+{% load staticfiles %}
+  <script type="text/javascript" src="http://visjs.org/dist/vis.js"></script>
+  <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+  <link href="http://visjs.org/dist/vis.css" rel="stylesheet" type="text/css" />
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+  <link rel="stylesheet" href="http://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">
+  <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+  <script src="http://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+  <script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.0/js/bootstrap.min.js"></script>
+  <script src="http://underscorejs.org/underscore-min.js"></script>
+  <script src = "https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.34.7/js/bootstrap-dialog.min.js" type="text/javascript"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.34.7/css/bootstrap-dialog.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+
+
+  <style type="text/css">
+      #blackout {
+      width:100%;
+      height:100%; /* make sure you have set parents to a height of 100% too*/
+      position: absolute;
+      left:0; top:0;
+      z-index:10 }
+
+    #mynetwork {
+      width: 1600px;
+      height: 800px;
+    }
+
+    #info{
+      display: none;
+      float:left;
+    }
+
+         .login-dialog .modal-dialog {
+                width: 1000px;
+            }
+
+         .login-dialog .btn {
+                margin-top: 10px;
+                margin-left: 5px;
+            }
+
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-default navbar-static-top">
+    <p class="navbar-text navbar-left">Hello</p>
+    <p class="navbar-text navbar-left"><a href="{% url 'search' %}" class="navbar-link">Back</a></p>
+    <p class="navbar-text navbar-left"><a href="{% url 'django.contrib.auth.views.logout' %}" class="navbar-link">Logout</a></p>
+    <button type="button" class="btn btn-default navbar-btn" onclick="save()">Save</button>
+    <form class="navbar-form navbar-left" role="search">
+        <div class="form-group">
+          <input type="text" id = "textret" class="form-control" placeholder="Session name">
+        </div>
+        <button type="button" class="btn btn-default" onclick="retreive()">Retrieve</button>
+    </form>
+    <label>Orange:</label><input type="text" id="orangeTopic" placeholder="Name this concept">
+    <label>Green:</label><input type="text" id="greenTopic" placeholder="Name this concept">
+    <label>Red:</label><input type="text" id="redTopic" placeholder="Name this concept">
+</nav>
+
+<div id="blackout" style='background:#e9e9e9; opacity: 0.5; width:100%; height:100%; display:none;'></div>
+<div id="mynetwork"></div>
+
+
+<script type="text/javascript">
+
+function getCookie(name) {
+var cookieValue = null;
+if (document.cookie && document.cookie != '') {
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+        var cookie = jQuery.trim(cookies[i]);
+        if (cookie.substring(0, name.length + 1) == (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+        }
+    }
+}
+    return cookieValue;
+}
+var csrftoken = getCookie('csrftoken');
+console.log(csrftoken);
+
+//Ajax call
+function csrfSafeMethod(method) {
+// these HTTP methods do not require CSRF protection
+return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+}
+$.ajaxSetup({
+    crossDomain: false, // obviates need for sameOrigin test
+    beforeSend: function(xhr, settings) {
+        if (!csrfSafeMethod(settings.type)) {
+            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+        }
+    }
+});
+
+  // create an array with nodes
+  n = {{ nodes|safe }};
+  var nodes = new vis.DataSet(n);
+
+  // create an array with edges
+  e = {{ edges|safe }}
+  var edges = new vis.DataSet(e);
+
+  // create a network
+  var container = document.getElementById('mynetwork');
+  var options = {
+        nodes: {
+            size: 120,
+            font: {
+                size: 200
+            },
+            borderWidth: 2
+        },
+        edges: {
+            width: 40,
+            color: 'black',
+            length: 3500,
+        },
+        groups: {
+            diamonds: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf0c0',
+              size: 500,
+              color: 'rgb(255,255,0)'
+            }},
+            diamondsr: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf0c0',
+              size: 500,
+              color: 'red'
+            }},
+            diamondso: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf0c0',
+              size: 500,
+              color: 'orange'
+            }},
+            diamondsg: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf0c0',
+              size: 500,
+              color: 'rgb(0,204,51)'
+            }},
+            dotsWithLabel: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf086',
+              size: 500,
+              color: 'cyan'
+            }},
+            dotsWithLabelr: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf086',
+              size: 500,
+              color: 'red'
+            }},
+            dotsWithLabelo: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf086',
+              size: 500,
+              color: 'orange'
+            }},
+            dotsWithLabelg: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf086',
+              size: 500,
+              color: 'rgb(0,204,51)'
+            }},
+            mints: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf03a',
+              size: 500,
+              color: 'rgb(255,153,204)'
+            }},
+            mintsr: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf03a',
+              size: 500,
+              color: 'red'
+            }},
+            mintso: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf03a',
+              size: 500,
+              color: 'orange'
+            }},
+             mintsg: {
+              shape: 'icon',
+              icon: {
+              face: 'FontAwesome',
+              code: '\uf03a',
+              size: 500,
+              color: 'rgb(0,204,51)'
+            }},
+            icons: {
+              shape: 'icon',
+              icon:{
+              face: 'FontAwesome',
+              code: '\uf19c',
+              size: 500,
+              color: 'rgb(76,0,153)'
+                }},
+            iconsr: {
+              shape: 'icon',
+              icon:{
+              face: 'FontAwesome',
+              code: '\uf19c',
+              size: 500,
+              color: 'red'
+                }},
+            iconso: {
+              shape: 'icon',
+              icon:{
+              face: 'FontAwesome',
+              code: '\uf19c',
+              size: 500,
+              color: 'orange'
+                }} ,
+            iconsg: {
+              shape: 'icon',
+              icon:{
+              face: 'FontAwesome',
+              code: '\uf19c',
+              size: 500,
+              color: 'rgb(0,204,51)'
+                }},          
+            source: {
+                color:{border:'white'}
+            }
+        },
+        interaction:
+        {hover:true,
+        navigationButtons: true,
+        keyboard:{enabled: true,bindToWindow: true}
+      },
+        physics:{
+          barnesHut:{
+            gravitationalConstant:-3000000,
+            centralGravity: 0.1
+            
+          },
+          stabilization: {iterations:3000}
+        }
+    };
+
+
+orange_list=[]
+red_list=[]
+green_list=[]
+
+  var data = {
+    nodes: nodes,
+    edges: edges
+  };
+  var network = new vis.Network(container, data, options);
+
+
+  var url1 = "{% url 'create_network' %}";
+  var url2 = "{% url 'expand' %}";
+
+  function send_id(params){
+    i = parseInt(params["nodes"]);
+    color = nodes['_data'][i].color == undefined? options['groups'][nodes['_data'][i]['group']]['color']: nodes['_data'][i].color;
+    group = nodes['_data'][i]['group']
+
+    var test = {"iden":i,"group": group}
+    $.ajax(url2, {
+      type: "GET",
+      data: test,
+      success: function(data) {
+          var ids = nodes.getIds();
+          ids = _.flatten(ids)
+          new_n = JSON.parse(JSON.parse(data)["node_new"]);
+          for(var i=0; i< new_n.length; i++){
+            if (!_.contains(ids, new_n[i]['id']))
+            {
+              nodes.add(new_n[i])
+              if (color=='rgb(0,204,51)'){green_list.push(new_n[i]['label'])}
+              else if (color=='orange'){orange_list.push(new_n[i]['label'])}
+                else if (color=='red'){red_list.push(new_n[i]['label'])}
+            }
+            else{
+              nodes.update({id:new_n[i]['id'],group:new_n[i]['group']}) 
+            }
+          }
+          
+          new_e = JSON.parse(JSON.parse(data)["edge_new"]);
+          ffs = edges.get({fields:['to','from']})
+          for(var i=0; i<new_e.length; i++){
+            edges.add(new_e[i])
+            var o = {"to":new_e[i]['to'], "from":new_e[i]['from']}
+            for(var j=0; j<ffs.length; j++){
+            if((ffs[j].to==o.to && ffs[j].from==o.from)==true){
+                edges.remove(new_e[i])
+              }
+            }
+          }
+          
+
+      },
+      error:   function(jqXHR, textStatus, errorThrown) {
+          alert("Error, status = " + textStatus + ", " +
+              "error thrown: " + errorThrown
+      );
+      }
+      });
+  }
+
+    function clusterByColor() {
+      network.setData(data);
+      var colors = ['orange','red','green'];
+      var clusterOptionsByData;
+      for (var i = 0; i < colors.length; i++) {
+          var color = colors[i];
+          clusterOptionsByData = {
+              joinCondition: function (childOptions) {
+                  return childOptions.color.background == color; // the color is fully defined in the node.
+              },
+              processProperties: function (clusterOptions, childNodes, childEdges) {
+                  var totalMass = 0;
+                  for (var i = 0; i < childNodes.length; i++) {
+                      totalMass += childNodes[i].mass;
+                  }
+                  clusterOptions.mass = totalMass;
+                  return clusterOptions;
+              },
+              clusterNodeProperties: {id: 'cluster:' + color, borderWidth: 3, shape: 'database', color:color, label:'color:' + color}
+          }
+          network.cluster(clusterOptionsByData);
+      }
+  }
+  
+
+
+  network.on("selectNode", function(params) {
+      if (params.nodes.length == 1) {
+          if (network.isCluster(params.nodes[0]) == true) {
+              network.openCluster(params.nodes[0]);
+          }
+      }
+  })
+
+  network.on("click", function (params) {
+    console.log(params)
+    j = params['nodes']
+        var dialogInstance = BootstrapDialog.show({
+            title: nodes['_data'][params['nodes']]['label']==undefined? "Hi": nodes['_data'][params['nodes']]['label'],
+            message: printMessage(params),
+            cssClass: 'login-dialog',
+
+            buttons: [
+                        {label: document.getElementById("orangeTopic").value,
+                        cssClass: 'btn-warning',
+                        icon: 'glyphicon glyphicon-heart',
+                        action: function(){
+                          u = nodes['_data'][j];
+                          g = u['group']
+                          nodes.update({id:j,group:g+'o'})
+                          //var orange= localStorage.getItem('orange')==null? []: JSON.parse(localStorage.getItem('orange'))
+                          orange_list.push(u['label']);
+                        //localStorage.setItem('orange',JSON.stringify(orange));
+                        dialogInstance.close()
+                    }
+                  },
+                        {
+                        label: document.getElementById("greenTopic").value,
+                        cssClass: 'btn-success',
+                        icon: 'glyphicon glyphicon-heart',
+                        action: function(){
+                          u = nodes['_data'][j];
+                          g = u['group']
+                          nodes.update({id:j,group:g+'g'})
+                          //var green = localStorage.getItem('green')==null? []: JSON.parse(localStorage.getItem('green'))
+                          green_list.push(u['label']);
+                          dialogInstance.close()
+                        }
+                      },
+                        {
+                        label: document.getElementById("redTopic").value,
+                        cssClass: 'btn-danger',
+                        icon: 'glyphicon glyphicon-heart',
+                        action: function(){
+                          u = nodes['_data'][j];
+                          g = u['group']
+                          nodes.update({id:j,group:g+'r'})
+                          //var red= localStorage.getItem('red')==null? []: JSON.parse(localStorage.getItem('red'))
+                          red_list.push(u['label']);
+                          //localStorage.setItem('red',JSON.stringify(red));
+                          dialogInstance.close()
+                        }
+                      },
+                       {
+                      label: 'Un-color',
+                      cssClass: 'btn',
+                      action: function(){
+                        u = nodes['_data'][j];
+                        color = options["groups"][u.group]['icon']['color'];
+                        if (color=="red"){
+                          red_list = _.without(red_list, nodes['_data'][j].label);
+                          l = _.without(JSON.parse(localStorage.getItem(color)), nodes['_data'][j].label);
+                          localStorage.setItem(color,JSON.stringify(l));
+                        }
+                        else if (color=="orange"){
+                          orange_list = _.without(orange_list, nodes['_data'][j].label);
+                        }
+                        else{
+                          l = _.without(JSON.parse(localStorage.getItem('green')), nodes['_data'][j].label);
+                          localStorage.setItem('green',JSON.stringify(l));                          
+                        }
+                        group = nodes['_data'][j].group
+                        if (group=='mintsr'||group=='mintso'||group=='mintsg'){
+                          nodes.update({id:j,group:'mints'}) 
+                        }
+                        else if(group=='dotsWithLabelo'||group=='dotsWithLabelr'||group=='dotsWithLabelg'){
+                          nodes.update({id:j,group:'dotsWithLabel'})
+                        }
+                        else if(group=='diamondso'||group=='diamondsg'||group=='diamondsr'){
+                          nodes.update({id:j, group:'diamonds'})
+                        }
+                        else {nodes.update({id:j,group:'icons'})}
+                          dialogInstance.close()
+                      }
+
+                      }, 
+            {
+                icon: 'glyphicon glyphicon-collapse-down',
+                label: 'Collapse',
+                action: function(){
+                  u = nodes['_data'][j];;
+                  keys = Object.keys(edges['_data'])
+                  for(var i=0; i<keys.length; i++){
+                    if(edges['_data'][keys[i]]['from']==j){
+                      nodes.remove(edges['_data'][keys[i]]['to'])
+                    }
+                  }
+                  dialogInstance.close()
+                }
+            },
+            {
+              icon: 'glyphicon glyphicon-expand',
+                label: 'Expand',
+                action: function(){
+                  send_id(params)
+                  dialogInstance.close()
+                }
+            },
+            {
+              icon: 'glyphicon glyphicon-thumbs-up',
+                label: 'Recommend',
+                action: function(){
+                  recs(params)
+                  dialogInstance.close()
+                  
+                }
+            },
+            {
+                      label: 'Delete',
+                      cssClass: 'btn',
+                      action: function(){
+                        u=nodes['_data'][j];
+                        color = options["groups"][u.group]['icon']['color']
+                        label= nodes['_data'][j].label
+                        if (color!=undefined){
+                          if (color=='red'){
+                            red_list = _.without(red_list, label);
+                            red = JSON.parse(localStorage.getItem('red'))
+                            l = _.without(red, label)
+                            localStorage.setItem('red',JSON.stringify(l))
+                          }
+                          if (color=='orange'){
+                            orange_list = _.without(orange_list, label);
+                            orange = JSON.parse(localStorage.getItem('orange'))
+                            l = _.without(orange, label)
+                            localStorage.setItem('orange',JSON.stringify(l))
+                          }
+                          if (color=='rgb(0,204,51)'){
+                            green_list = _.without(green_list, label);
+                            green = JSON.parse(localStorage.getItem('green'))
+                            l = _.without(green, label)
+                            localStorage.setItem('green',JSON.stringify(l))
+                          }
+                        }
+                        nodes.remove(j)
+                        dialogInstance.close()
+                      }
+                      }
+            ]
+        });
+      });
+
+  var link = '/search/create_network/info'
+
+  function getInfo(params){
+    var inf;
+    i = params['nodes'][0][0]==undefined? params['nodes'][0]:params['nodes'][0][0]
+    group = nodes['_data'][i]['group']
+    send = {'nid':i, 'g':group}
+    $.ajax(link, {
+      async:false,
+      type: "GET",
+      data: send,
+      success: function(value) {
+        inf = JSON.parse(value)[0];
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+          alert("Error, status = " + textStatus + ", " +
+              "error thrown: " + errorThrown
+      );
+      }
+    });
+    return inf;
+  }
+
+  function printMessage(params){
+    var o = getInfo(params);
+    var numkeys = Object.keys(o).length;
+    if (numkeys==2){
+      id = params['nodes']
+      past = o['past']
+      upcoming = o['upcoming']
+      message = 'Id : '+ id +'\n'+'past : '+past +'\n' + 'upcoming : '+upcoming
+    }
+    else if(numkeys ==1){
+      id = params['nodes']
+      no_of_talks = o['no_of_talks']
+      message = 'Id : '+ id +'\n'+'Number of talks this speaker has given: '+no_of_talks
+    }
+    else if(numkeys==4){
+      id = params['nodes']
+      venue = o['venue']
+      speaker = o['speaker']
+      date = o['date']
+      abstract = o['abstract']
+      message = 'Id : '+ id +'\n'+'Venue: '+venue+'\n' +'Speaker: '+speaker+'\n'+'Date: '+date+'\n'+'Abstract: '+abstract
+    }
+    return message;
+
+  }
+
+  var url3 = "{% url 'recommendations' %}";
+  function recs(params){
+    document.getElementById('blackout').style.display = 'block';
+    i = params['nodes'][0][0]==undefined?params['nodes'][0]:params['nodes'][0][0]
+    u = nodes['_data'][i]
+    color = options["groups"][u.group]['icon']['color']
+    if (color=='rgb(0,204,51)'){
+      rlist = green_list
+    }
+    else if(color=='orange'){ rlist=orange_list}
+    else if(color=='red'){rlist = red_list}
+    else{ alert("Recommending failed! Please color the node to assign it to a concept.");
+          document.getElementById('blackout').style.display = 'none';
+              }
+    test={'rid':i, 'rcolor':color, 'rlist':JSON.stringify(rlist)}
+
+    $.ajax(url3, {
+      type: "GET",
+      data: test,
+      success: function(data) {
+          var ids = nodes.getIds();
+          ids = _.flatten(ids)
+          rec_n = JSON.parse(JSON.parse(data)["recnodes"]);
+          for(var i=0; i< rec_n.length; i++){
+            if (!_.contains(ids, rec_n[i]['id']))
+            {
+              nodes.add(rec_n[i])
+            }
+            else{
+              nodes.update({id:rec_n[i]['id'],group:rec_n[i]['group']}) 
+            }
+          }
+          //if (color=='rgb(0,204,51)'){localStorage.setItem('green', JSON.stringify(rlist))}
+          //else{localStorage.setItem(color, JSON.stringify(rlist))}
+          rec_e = JSON.parse(JSON.parse(data)["recedges"]);
+          ffss = edges.get({fields:['to','from']})
+          for(var i=0; i<rec_e.length; i++){
+            edges.add(rec_e[i])
+            var ox = {"to":rec_e[i]['to'], "from":rec_e[i]['from']}
+            for(var j=0; j<ffss.length; j++){
+            if((ffss[j].to==ox.to && ffss[j].from==ox.from)==true){
+                edges.remove(rec_e[i])
+              }
+            }
+          }
+          document.getElementById('blackout').style.display = 'none';
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+          //alert("Error, status = " + textStatus + ", " +"error thrown: " + errorThrown);
+          alert("Recommending failed! Please color the node to assign it to a concept.");
+          document.getElementById('blackout').style.display = 'none';
+      }
+    });
+
+  }
+  var url4 = "{% url 'save' %}";
+  function save(){
+    var currentDate=document.getElementById("textret").value;
+    nsend = []
+    var nids = nodes.getIds()
+    for(var i=0; i<nids.length; i++){
+        nsend.push(nodes['_data'][nids[i]])
+    }
+    var eids = edges.getIds()
+    esend=[]
+    for(var i=0; i<eids.length; i++){
+        esend.push(edges['_data'][eids[i]])
+    }
+    n = JSON.stringify(nsend)
+    e = JSON.stringify(esend)
+    var send={'nodes':n, 'edges':e, 'date':currentDate}
+      $.ajax(url4, {
+      type: "POST",
+      data: send,
+      success: function(data) {
+        alert("Session saved!")
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+          //alert("Error, status = " + textStatus + ", " +"error thrown: " + errorThrown
+          alert("Saving failed");
+      }
+    });
+  }
+  var url5 = "{% url 'retreive' %}";
+  function retreive(){
+    var date = document.getElementById("textret").value
+    var send={'date':date}
+      $.ajax(url5, {
+      type: "GET",
+      data: send,
+      success: function(data) {
+        nodes.clear()
+        edges.clear()
+        n = JSON.parse(JSON.parse(data)['n'])
+        nodes.add(n)
+        e = JSON.parse(JSON.parse(data)['e'])
+        edges.add(e)
+      },
+      error: function(jqXHR, textStatus, errorThrown) {
+          alert("Error, status = " + textStatus + ", " +"error thrown: " + errorThrown);
+      }
+    });
+  }
+
+
+
+
+</script>
+
+<script src="http://visjs.org/examples/googleAnalytics.js"></script>
+</body>
+</html>
